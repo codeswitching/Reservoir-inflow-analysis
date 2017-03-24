@@ -47,9 +47,9 @@ fif <- oro %>% filter(cumdiff == min(cumdiff)) %>% mutate(doy = as.Date(julian, 
 ### Intro
 **A lot of people are saying that climate change will affect the timing of runoff in California? Is that true? Let's find out!** 
 
-*Epistemic status: Not by any means a rigorous scientific study. This was more about seeing if I could get any insight out of relatively simple data analysis using easily available data. And also to develop a workflow for future analyses using Rmarkdown, RPubs, plot.ly and github.*
+*Epistemic status: Not by any means a rigorous scientific study. This was more about seeing if I could get any insight out of relatively simple data analysis using easily available data. And also to develop a workflow for future analyses using Rmarkdown, RPubs, plot.ly and github. Very open to suggestions for improvement.*
 
-If you've been following western water on twitter, you may have seen that Udall and Overpeck's <a href="http://onlinelibrary.wiley.com/doi/10.1002/2016WR019638/full">recent paper</a> on "hot drought" in the Colorado River basin has been getting a lot of press. I've seen Jonathan Overpeck speak at a couple of conferences now and his message boils down to "It's the temperature, stupid." He divides droughts in to "precipitation-dominated droughts" and "temperature-dominated droughts". Precip-dominated drought is what we normally tend to think of -- a drought happens because there's not enough precipitation. Increasingly, though, intense drought is occuring even when precip is only a little below average. The reason is higher temperatures due to climate change. In the most recent drought, Colorado River flows decreased more than predicted by precipitation alone; temperature played an outsized role.
+If you've been following western water on twitter, you may have seen that Udall and Overpeck's <a href="http://onlinelibrary.wiley.com/doi/10.1002/2016WR019638/full">recent paper</a> on "hot drought" in the Colorado River basin has been getting a lot of press. I've seen Jonathan Overpeck speak at a couple of conferences now and his message boils down to "**It's the temperature, stupid.**" He divides droughts in to "precipitation-dominated droughts" and "temperature-dominated droughts". Precip-dominated drought is what we normally tend to think of -- a drought happens because there's not enough precipitation. Increasingly, though, intense drought is occuring even when precip is only a little below average. The reason is higher temperatures due to climate change. In the most recent drought, Colorado River flows decreased more than predicted by precipitation alone; temperature played an outsized role.
 
 In California, climate scientists predict that warmer temperatures will have two effects on precipitation:
 
@@ -100,7 +100,9 @@ l
 ```
 .
 
-Now we can easily find the date where the cumulative flow reaches 0.5 for each water year. Since we're interested in the effect of temperature on this date, I downloaded some CIMIS data from the nearest station to Oroville and computed the mean daily average air temperature for each water year. To zero in on the effect of temperature on precip mode and snowpack melting, I calculated the mean temp for the water year using just the eight months of November through June, when most precip and melting is occuring. For lack of a better term, I'll call this the "hydrologically active period of the water year".
+Now we can easily find the date where the cumulative flow reaches 0.5 for each water year. Since we're interested in the effect of temperature on this date, I downloaded some CIMIS data from the Buntingville station, which is not all that close to Oroville but is at least one of the few stations deep in the Sierra where the snow lives. Ideally we'd want to find some better data to get an average from different points around the Oroville watershed.
+
+With the Buntingville average air temperature data I computed the mean temperature for each water year. To zero in on the effect of temperature on precip mode and snowpack melting, I calculated the mean temp for the water year using just the eight months of November through June, when most precip and melting is occuring. For lack of a better term, I'll call this the "hydrologically active period of the water year".
 
 .
 ```{r temp plot, fig.height=4}
