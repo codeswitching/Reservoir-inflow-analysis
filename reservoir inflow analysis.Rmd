@@ -63,7 +63,8 @@ Lake Oroville seems like a good reservoir to start with, for obvious reasons. I 
 
 ```{r flow time series}
 l <- plot_ly(oro, x=~date, y=~inflow, type="scatter", mode="lines", fill="tozeroy", line = list(width=1)) %>%
-  layout(xaxis = list(title = 'Water year'),
+  layout(title="Lake Oroville inflows, 1995-2016",
+         xaxis = list(title = 'Water year'),
          yaxis = list(title = 'Reservoir inflow (AF)'))
 l
 ```
@@ -77,7 +78,8 @@ In the charts that follow, I used the water year, which starts on October 1, rat
 
 ```{r cumflow plot}
 l <- plot_ly(oro, x=~date, y=~cumflow, type="scatter", mode="lines", fill="tozeroy") %>%
-  layout(xaxis = list(title = 'Water year'),
+  layout(title = "Cumulative Lake Oroville inflow",
+         xaxis = list(title = 'Water year'),
          yaxis = list(title = 'Cumulative reservoir inflow (AF)'))
 l
 ```
