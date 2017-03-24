@@ -61,6 +61,7 @@ The combined result of these effects is that reservoirs will see more inflow ear
 ### Method
 Lake Oroville seems like a good reservoir to start with, for obvious reasons. I began by downloading reservoir inflow data from <a href="http://cdec.water.ca.gov/cgi-progs/staSearch">DWR</a> and importing it into R for analysis. The data goes back as far as 1995, giving us about 20 years of flows to work with. Plotting the time series and zooming in on any particular year, we can see the general pattern of inflow: winter storms bring sharp spikes of runoff from December to April, then melting snowpack produces a broad pulse of flow that sustains the reservoir until mid-summer (click and drag horizontally to zoom in on a year):
 
+.
 ```{r flow time series}
 l <- plot_ly(oro, x=~date, y=~inflow, type="scatter", mode="lines", fill="tozeroy", line = list(width=1)) %>%
   layout(title="Lake Oroville inflows, 1995-2016",
@@ -157,16 +158,18 @@ l <- plot_ly(fif, x=~wy_avgtemp, y=~doy, text=~year, type="scatter") %>%
             showlegend = F)
 l
 ```
+.
 
-For every 1 degree increase in mean temperature during the hydrologically active part of the water year (Nov--June), the date of peak inflow is 5--11 days earlier (*p = 0.016, R^2^ = 0.22*):
+**For every 1 degree increase in mean temperature during the hydrologically active part of the water year (Nov--June), the date of peak inflow is 5--11 days earlier (*p = 0.016, R^2^ = 0.22*):**
 
 ```{r coefficient table, results=T}
 summary(m)
 ```
 
-The effect size is pretty large but it's only marginally significant, so let's look at some other reservoirs.
+The effect size is pretty large but it's only marginally significant, so let's look at another reservoir farther south:
 
-```{r Analyze Folsom}
+.
+```{r Analyze Folsom, fig.height=4}
 tempdata <- read_csv("cimis camino.csv", col_types = cols(`CIMIS Region` = col_skip(),
   Date = col_date(format = "%m/%d/%Y")))
 colnames(tempdata) <- c("id", "name", "date", "julian", "maxtemp", "qc1", "avgtemp", "qc2")
@@ -200,14 +203,19 @@ l <- plot_ly(fif, x=~wy_avgtemp, y=~doy, text=~year, type="scatter") %>%
             showlegend = F)
 l
 ```
+.
 
-1 degree F = 4--10 days earlier (*p = 0.017*); temperature data from Camino CIMIS station.
+Folsom is about the same: 1 ^o^F = 4--10 days earlier (*p = 0.017*); temperature data from Camino CIMIS station.
 
 ### Discussion
 The snowpack serves as an enormous 'free' reservoir for California, storing much more water (5-20 MAF) than we're able to store with artificial reservoirs and releasing it steadily throughout the spring and summer months when demand is highest. This graph shows how the Northern Sierra snowpack builds throughout the winter, reaching a peak in late March. On April 1, DWR measures the depth of the snowpack and estimates how much water will be available through the State Water Project for that year. If the snowpack peaks earlier due to less snow and faster melting In this analysis, we did not consider other factors that may increase the rate of snowmelt, such as dust settling out of the atmosphere onto the snow surface, where it reduces albedo and heats the snow (more of a problem in the Rockies than the Sierra).
 
 ### Further analysis
-There are other response variables we could analyze. Instead of reservoir inflows, we could look at Sierra streamflows or snowpack SWE (snow water equivalent). But reservoirs are nice because they aggregate multiple effects (rain vs snow dominance, timing of snowmelt) and drain large areas of alpine watershed. We could also look at other predictors such as solar radiation, or at least refine our temperature data to get a more respresentative estimate of temperature than the crude annual mean used here. There may also be a nonlinear response between temperature and runoff that this model doesn't consider. If you have ideas for how to improve this analysis, please let me know.
+It would be awfully nice if we had a longer historical record to analyze. DWR may have old reservoir data sitting around in some form, and some enterprising analyst could file a public records request, but they probably have more important matters to attend to at the moment. More importantly, the data that is online is difficult to access and time consuming to process; there's no way to just download a raw csv file and the web page must be scraped. The CIMIS weather data, by contrast, is easy to access through their <a href="http://et.water.ca.gov/">API</a>; I even wrote <a href="https://github.com/codeswitching/rcimis" target="_blank">an R tool</a> to do it in a single line of code.
+
+**With all the discussion recently about the need for better water data, one concrete thing agencies like DWR could do is to develop APIs for all of their public-facing databases.** That would allow civic-minded developers, scientists, and open data wonks (and there's a lot of us!) to develop tools and better front-ends for that data. Transit is the key example. By urging cities to standardize their public transit information and expose it through an API, Google was able to provide a much smoother user experience through Google Maps than what the cities had been providing.
+
+In terms of the science, there are other response variables we could analyze. Instead of reservoir inflows, we could look at Sierra streamflows or snowpack SWE (snow water equivalent). But reservoirs are nice because they aggregate multiple effects (rain vs snow dominance, timing of snowmelt) and drain large areas of alpine watershed. We could also look at other predictors such as solar radiation, or at least refine our temperature data to get a more respresentative estimate of temperature than the crude annual mean used here. There may also be a nonlinear response between temperature and runoff that this model doesn't consider. If you have ideas for how to improve this analysis, please let me know.
 
 Made with love using R, RStudio, RMarkdown, the tidyverse, plot.ly, and RPubs.
-R code for this analysis can be found on Github <a href="https://github.com/codeswitching/Reservoir-inflow-analysis/tree/master">here</a>.
+R code for this analysis can be found on Github <a href="https://github.com/codeswitching/Reservoir-inflow-analysis/tree/master", target="_blank">here</a>.
