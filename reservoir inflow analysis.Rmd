@@ -59,7 +59,7 @@ In California, climate scientists predict that warmer temperatures will have two
 The combined result of these effects is that reservoirs will see more inflow earlier in the year. The risk of flooding from spillway damage or dam overtopping, like we've seen with Oroville recently, will be higher. And because reservoirs are usually kept at a lower level in the winter to leave room for flood control, water that could have been banked if received later in the year will be spilled (this water provides an important environmental benefit, e.g. as young salmon habitat in the Yolo Bypass, so I don't believe in calling it 'lost' or 'wasted', but it does reduce the potential deliveries to human water users downstream).
 
 ### Method
-Lake Oroville seems like a good reservoir to start with, for obvious reasons. I began by downloading reservoir inflow data from <a href="http://cdec.water.ca.gov/cgi-progs/staSearch">DWR</a> and importing it into R for analysis. The data goes back as far as 1995, giving us about 20 years of flows to work with. Plotting the time series and zooming in on any particular year, we can see the general pattern of inflow: winter storms bring sharp spikes of runoff from December to April, then melting snowpack produces a broad pulse of flow that sustains the reservoir until mid-summer (click and drag horizontally to zoom in on a year):
+Lake Oroville seems like a good reservoir to start with, for obvious reasons. I began by downloading reservoir inflow data from <a href="http://cdec.water.ca.gov/cgi-progs/staSearch">DWR</a> and importing it into R for analysis. The data go back as far as 1995, giving us about 20 years of flows to work with. Plotting the time series and zooming in on any particular year, we can see the general pattern of inflow: winter storms bring sharp spikes of runoff from December to April, then melting snowpack produces a broad pulse of flow that sustains the reservoir until mid-summer (click and drag horizontally to zoom in on a year):
 
 .
 ```{r flow time series}
@@ -115,7 +115,7 @@ p
 ```
 .
 
-Mean annual temperatures varied from 38 to 55 ^o^F. Ideally, we would use just the temperatures during December - June when most of the precip occurs, but for now let's use the entire year.
+Mean annual temperatures varied from 38 to 55 ^o^F.
 
 ### Results
 
