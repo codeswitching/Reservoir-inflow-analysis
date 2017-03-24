@@ -1,5 +1,5 @@
 ---
-title: "Climate change and the timing of runoff in California"
+title: "Climate change & timing of runoff in California"
 output:
   html_document:
     theme: cerulean
