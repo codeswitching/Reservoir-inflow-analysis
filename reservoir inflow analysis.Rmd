@@ -115,7 +115,7 @@ p
 ```
 .
 
-Mean annual temperatures varied from 38 to 55 ^o^F.
+Mean annual temperatures varied from 38 to 50 ^o^F.
 
 ### Results
 
