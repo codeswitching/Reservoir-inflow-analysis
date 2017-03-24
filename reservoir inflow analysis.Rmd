@@ -52,7 +52,7 @@ temperatures
 
 The snowpack serves as an enormous reservoir by storing much more water (MAF) than we're able to store with reservoirs alone and releasing it steadily throughout the spring and summer months.
 
-We can predict that warmer temperatures will have two effects on precipitation in California:
+Climate scientists predict that warmer temperatures will have two effects on precipitation in California:
 
 1. More winter precipitation will fall as rain rather than snow, and will runoff into streams and reservoirs immediately rather than being stored in the snowpack
 2. The snowpack that does accumulate will melt faster.
@@ -127,7 +127,7 @@ l <- plot_ly(fif, x=~wy_avgtemp, y=~doy, text=~year, type="scatter", name="Peak 
 l
 ```
 
-A couple years, 1997 and 2013, are outliers. It seems one or two very large storms can have a large effect on the peak timing. Same data with a linear model fit:
+The date of peak inflow for Oroville has varied from Jan 8 to April 28, but most years it occurs sometime in March. In the northern Sierra, peak snowpack occurs in late March on average, and DWR considers April 1 to be the end of major precipitation and the beginning of snowpack melting. A couple years, 1997 and 2013, are outliers. It seems one or two very large storms can have a large effect on the peak timing. Same data with a linear model fit:
 
 ```{r, fig.height=4}
 m <- lm(data = fif, julian ~ wy_avgtemp)
@@ -157,4 +157,4 @@ summary(m)
 The effect size is pretty large but it's only marginally significant, so let's look at some other reservoirs.
 
 Made with love using R, RStudio, RMarkdown, the tidyverse, plot.ly, and RPubs.
-R code for this analysis can be found on Github here.
+R code for this analysis can be found on Github <a href="https://github.com/codeswitching/Reservoir-inflow-analysis/tree/master">here</a>.
