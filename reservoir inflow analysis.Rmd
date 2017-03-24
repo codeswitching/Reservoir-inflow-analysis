@@ -1,0 +1,160 @@
+---
+title: "Climate change and the timing of runoff in California"
+output:
+  html_document:
+    theme: cerulean
+    fig_height: 3
+    toc: true
+    toc_float: true
+---
+**Lauren Steely, @MadreDeZanjas**
+
+**March 2017**
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+
+library(lubridate) # makes working with dates easier
+library(magrittr)  # %<>% pipes
+library(dplyr)     # data wrangling grammar
+library(plotly)    # interactive, javascript-enabled web graphics
+library(readr)     # functions for reading in source data
+
+water_year <- function(date) {
+  ifelse(month(date) < 10, year(date)-1, year(date))
+}
+
+tempdata <- read_csv("cimis buntingville.csv", col_types = cols(`CIMIS Region` = col_skip(),
+                                                                                   Date = col_date(format = "%m/%d/%Y")))
+colnames(tempdata) <- c("id", "name", "date", "julian", "maxtemp", "qc1", "avgtemp", "qc2")
+tempdata %<>% select(date, avgtemp) %>% filter(!(month(date) %in% c(7, 8, 9, 10))) %>%
+  mutate(avgtemp = ifelse(is.na(avgtemp), 50, avgtemp), wateryear = water_year(date)) %>% group_by(wateryear) %>%
+  summarize(wy_avgtemp = mean(avgtemp))
+
+oro <- read_csv("Oroville inflow.csv")
+oro %<>% transmute(date = mdy(Date), inflow = as.numeric(Inflow) * 60 *60 * 24 * 7.48 / 325851,
+                   year = year(date), julian = yday(date), wateryear = water_year(date)) %>%
+  filter(!is.na(inflow), inflow >= 0, wateryear != 1993, wateryear != 2016) %>%
+  group_by(wateryear) %>%
+  mutate(cumflow = cumsum(inflow), cumdist = cumflow/max(cumflow), cumdiff = abs(cumdist - 0.5)) %>%
+  left_join(tempdata, by="wateryear")
+fif <- oro %>% filter(cumdiff == min(cumdiff)) %>% mutate(doy = as.Date(julian, origin = "2017-01-01"))
+```
+
+<img src="http://www.shastalake.com/images/dam/shastalake-4-15-2004.jpg">
+
+### Intro
+**A lot of people are saying that climate change will affect the timing of runoff in California? Is that true? Let's find out!** 
+
+*Epistemic status: Not by any means a rigorous scientific study. This was more about seeing if I could get any insight out of relatively simple data analysis using easily available data.*
+
+While the 
+temperatures
+
+The snowpack serves as an enormous reservoir by storing much more water (MAF) than we're able to store with reservoirs alone and releasing it steadily throughout the spring and summer months.
+
+We can predict that warmer temperatures will have two effects on precipitation in California:
+
+1. More winter precipitation will fall as rain rather than snow, and will runoff into streams and reservoirs immediately rather than being stored in the snowpack
+2. The snowpack that does accumulate will melt faster.
+
+The combined result of these effects is that reservoirs will see more inflow earlier in the year. The risk of flooding from spillway damage or dam overtopping will be higher. And because reservoirs are usually kept at a lower level in the winter to leave room for flood control, water that could have been banked if received later in the year will be spilled (this water provides an important environmental benefit, e.g. as young salmon habitat in the Yolo Bypass, so I don't believe in calling it 'lost' or 'wasted', but it does reduce the potential deliveries to human water users downstream).
+
+### Method
+Lake Oroville seems like a good reservoir to start with, for obvious reasons. I began by downloading reservoir inflow data from <a href="http://cdec.water.ca.gov/cgi-progs/staSearch">DWR</a> and importing it into R for analysis. The data goes back as far as 1995, giving us about 20 years of flows to work with. Plotting the time series and zooming in on any particular year, we can see the general pattern of inflow: winter storms bring sharp spikes of runoff from December to April, then melting snowpack produces a broad pulse of flow that sustains the reservoir until mid-summer (click and drag horizontally to zoom in on a year):
+
+```{r flow time series}
+l <- plot_ly(oro, x=~date, y=~inflow, type="scatter", mode="lines", fill="tozeroy", line = list(width=1)) %>%
+  layout(xaxis = list(title = 'Water year'),
+         yaxis = list(title = 'Reservoir inflow (AF)'))
+l
+```
+
+The large storms from the 1997-98 El Nino, one of the most powerful in recorded history, are evident.
+
+### Finding the peak inflow
+How should we determine the 'peak' of reservoir inflow? For reservoirs that dam rivers, we can imagine the inflow curve for each water year as a skewed bell curve representing the river's base flow, onto which is superimposed transient peaks from the winter storms. At first thought we could just find the day with the maximum flow for each water year, but that would give the date of the largest storm rather than the true midpoint of the curve. A better approach is to find the date at which 50% of the inflow for that year has occured. One way to do this is to turn the inflow curves into *cumulative* inflow curves, rescale them all to 0--1, and then find the date that corresponds to 0.5, the midpoint of the curve.
+
+In the charts that follow, I used the water year, which starts on October 1, rather than calendar year. Precipitation in California is highly seasonal, with most precip falling between November and April. It makes sense to start counting inflows at the beginning of the wet season rather than in the middle.
+
+```{r cumflow plot}
+l <- plot_ly(oro, x=~date, y=~cumflow, type="scatter", mode="lines", fill="tozeroy") %>%
+  layout(xaxis = list(title = 'Water year'),
+         yaxis = list(title = 'Cumulative reservoir inflow (AF)'))
+l
+```
+
+Here we can see a lot of variability in the total inflow from year to year. Lake Oroville has a capacity of 3.5 MAF, but during the stormy winter months DWR limits it to 2.8 MAF to allow space for flood control. That restriction is loosened after April 1, allowing snowmelt to top off the reservoir. In wet years, Oroville receives much more inflow than its capacity has to spill into the Feather River. In dry years such as the 2011-16 drought, it receives much less.
+
+Normalizing the curves gives:
+
+```{r scaled cumflow plot}
+l <- plot_ly(oro, x=~date, y=~cumdist, type="scatter", mode="lines", fill="tozeroy") %>%
+  layout(xaxis = list(title = 'Water year'),
+         yaxis = list(title = 'Cumulative reservoir inflow (AF)'))
+l
+```
+
+Now we can easily find the date where the cumulative flow reaches 0.5 for each water year. Since we're interested in the effect of temperature on this date, I downloaded some CIMIS data from the nearest station to Oroville and computed the mean daily average air temperature for each water year. To zero in on the effect of temperature on precip mode and snowpack melting, I calculated the mean temp for the water year using just the eight months of November through June, when most precip and melting is occuring. For lack of a better term, I'll call this the "hydrologically active period of the water year".
+
+```{r temp plot, fig.height=4}
+
+p <- plot_ly(oro, x=~wateryear, y=~wy_avgtemp, color=~wy_avgtemp, type="box") %>%
+  layout(title = "Average daily temperature, CIMIS Buntingville station, WY1994 - WY2015",
+         xaxis = list(title = "Water year"),
+         yaxis = list(title = "Average daily temperature (deg F)"))
+p
+```
+
+Mean annual temperatures varied from 48 to 55 ^o^F. Ideally, we would use just the temperatures during December - June when most of the precip occurs, but for now let's use the entire year.
+
+### Results
+
+Finally, we're ready to plot the date of peak inflow against the mean temperature for the water year. The prediction is that warmer temperatures will, ceti paribus, lead to earlier peak inflows. Here's the scatter plot (ignore the 2017 in the y-axis label):
+
+```{r, fig.height=4}
+m <- lm(data = fif, julian ~ wy_avgtemp)
+
+a <- as.numeric(as.Date("2017-01-01")) * 24 * 60 * 60 * 1000
+b <- as.numeric(as.Date("2017-04-30")) * 24 * 60 * 60 * 1000
+l <- plot_ly(fif, x=~wy_avgtemp, y=~doy, text=~year, type="scatter", name="Peak Flow") %>%
+     add_trace(fif, x = ~wy_avgtemp, y = as.Date(fitted(m), origin = "2017-01-01"), type = "scatter", mode = "lines",
+               line = list(width = 2), dash="dash") %>%
+     layout(title = "Oroville, date of peak reservoir inflow vs mean water year temperature",
+            xaxis = list(title = 'Mean water year temperature, Nov - June (deg F)'),
+            yaxis = list(title = "", range = c(a, b), tick0 = as.numeric(as.Date("2017-01-02"))*24*60*60*1000,
+            dtick = 31*24*60*60*1000),
+            showlegend = F)
+l
+```
+
+A couple years, 1997 and 2013, are outliers. It seems one or two very large storms can have a large effect on the peak timing. Same data with a linear model fit:
+
+```{r, fig.height=4}
+m <- lm(data = fif, julian ~ wy_avgtemp)
+nd <- data.frame(wy_avgtemp = fif$wy_avgtemp)
+n <- predict(m, newdata=nd, interval="confidence")
+fif$lm <- as.Date(n, origin = "2017-01-01")
+
+a <- as.numeric(as.Date("2017-01-01")) * 24 * 60 * 60 * 1000
+b <- as.numeric(as.Date("2017-04-30")) * 24 * 60 * 60 * 1000
+l <- plot_ly(fif, x=~wy_avgtemp, y=~doy, text=~year, type="scatter") %>%
+     add_trace(fif, x = ~wy_avgtemp, y = ~lm, type = "scatter", mode = "line",
+               line = list(width = 1), dash="dash") %>%
+     layout(title = "Oroville, date of peak reservoir inflow vs mean water year temperature",
+            xaxis = list(title = 'Mean water year temperature, Nov - June (deg F)'),
+            yaxis = list(title = "", range = c(a, b), tick0 = as.numeric(as.Date("2017-01-02"))*24*60*60*1000,
+            dtick = 31*24*60*60*1000),
+            showlegend = F)
+l
+```
+
+For every 1 degree increase in mean temperature during the hydrologically active part of the water year (Nov--June), the date of peak inflow is 5--11 days earlier (*p = 0.016, R^2^ = 0.22*):
+
+```{r, results=T}
+summary(m)
+```
+
+The effect size is pretty large but it's only marginally significant, so let's look at some other reservoirs.
+
+Made with love using R, RStudio, RMarkdown, the tidyverse, plot.ly, and RPubs.
+R code for this analysis can be found on Github here.
