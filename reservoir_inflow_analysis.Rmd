@@ -241,7 +241,7 @@ It would be awfully nice if we had a longer historical record to analyze. DWR ma
 
 In terms of the science, there are other response variables we could analyze. Instead of reservoir inflows, we could look at Sierra streamflows or snowpack SWE (snow water equivalent). But reservoirs are nice because they aggregate multiple effects (rain vs snow dominance, timing of snowmelt) and drain large areas of alpine watershed. We could also look at other predictors such as solar radiation, or at least refine our temperature data to get a more respresentative estimate of temperature than the crude annual mean used here. There may also be a nonlinear response between temperature and runoff that this model doesn't consider. If you have ideas for how to improve this analysis, please let me know.
 
-----
+-----
 
 Made with love using R, RStudio, RMarkdown, the tidyverse, plot.ly, and RPubs.
 R code for this analysis can be found on Github <a href="https://github.com/codeswitching/Reservoir-inflow-analysis/tree/master", target="_blank">here</a>.
