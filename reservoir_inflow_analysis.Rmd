@@ -1,0 +1,247 @@
+---
+title: "Climate change & timing of runoff in California"
+output:
+  html_document:
+    theme: cerulean
+    fig_height: 3
+    toc: true
+    toc_float: true
+---
+**Lauren Steely, @MadreDeZanjas**
+
+**March 2017**
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+
+library(lubridate) # makes working with dates easier
+library(magrittr)  # %<>% pipes
+library(dplyr)     # data wrangling grammar
+library(plotly)    # interactive, javascript-enabled web graphics
+library(readr)     # functions for reading in source data
+
+water_year <- function(date) {
+  ifelse(month(date) < 10, year(date)-1, year(date))
+}
+
+tempdata <- read_csv("cimis buntingville.csv", col_types = cols(`CIMIS Region` = col_skip(),
+    Date = col_date(format = "%m/%d/%Y")))
+colnames(tempdata) <- c("id", "name", "date", "julian", "maxtemp", "qc1", "avgtemp", "qc2")
+tempdata %<>% select(date, avgtemp) %>% filter(!(month(date) %in% c(7, 8, 9, 10))) %>%
+  mutate(avgtemp = ifelse(is.na(avgtemp), 50, avgtemp), wateryear = water_year(date))
+tdata <- tempdata
+tempdata %<>%group_by(wateryear) %>%
+  summarize(wy_avgtemp = mean(avgtemp))
+
+oro <- read_csv("Oroville inflow.csv")
+oro %<>% transmute(date = mdy(Date), inflow = as.numeric(Inflow) * 60 *60 * 24 * 7.48 / 325851,
+                   year = year(date), julian = yday(date), wateryear = water_year(date)) %>%
+  filter(!is.na(inflow), inflow >= 0, wateryear != 1993, wateryear != 2016) %>%
+  group_by(wateryear) %>%
+  mutate(cumflow = cumsum(inflow), cumdist = cumflow/max(cumflow), cumdiff = abs(cumdist - 0.5)) %>%
+  left_join(tempdata, by="wateryear")
+fif <- oro %>% filter(cumdiff == min(cumdiff)) %>% mutate(doy = as.Date(julian, origin = "2017-01-01"))
+```
+
+<img src="http://www.shastalake.com/images/dam/shastalake-4-15-2004.jpg">
+
+---
+
+### Intro
+
+*Epistemic status: Not pretending this is a rigorous scientific study. This was more about seeing if I could get any insight out of relatively simple data analysis using easily available data. And also to develop a workflow for future analyses using Rmarkdown, RPubs, plot.ly and github.*
+
+If you've been following western water on twitter, you may have seen that Udall and Overpeck's <a href="http://onlinelibrary.wiley.com/doi/10.1002/2016WR019638/full">recent paper</a> on "hot drought" in the Colorado River basin has been getting a lot of press. I've seen Jonathan Overpeck speak at a couple of conferences now, and his message boils down to "**It's the temperature, stupid.**" Basically, he divides droughts into "precipitation-dominated droughts" and "temperature-dominated droughts". Precip-dominated drought is what we normally tend to think of -- a drought happens because there's not enough precipitation. Increasingly, though, intense drought is occuring even when precip is only a little below average, thanks to higher temperatures due to climate change. Overpeck says that in the most recent drought, Colorado River flows decreased more than predicted by precipitation alone because temperature played an outsized role.
+
+Some coworkers and I were talking about how all this might apply to California, given the recent, um, issues up at Oroville. Climate scientists predict that warmer temperatures will have two effects on precipitation in California:
+
+1. More winter precipitation will fall as rain rather than snow, and will runoff into streams and reservoirs immediately rather than being stored in the snowpack
+2. The snowpack that does accumulate will melt faster.
+
+The combined result of these effects is that reservoirs will see more inflow earlier in the year.
+
+### Reservoir economics
+
+Now imagine you're a reservoir operator trying to balance inflows and outflows. You have water coming into your pool and water going out, generating a base load of hydropower and meeting downstream demands. You would like to turn as much of your water into $$electricity as possible, but the power plant intakes can only accept a certain amount of flow, after which you have to spill water uselessly over the spillway. So you'd prefer to avoid spilling. On the other hand, you generate more power with a higher head of water, so you want the reservoir to be high but not high enough to spill -- just below full pool would be nice. This calls for a moderate and steady outflow.
+
+But you have other concerns besides power. Farmers and cities downstream depend on you releasing water. Water demand is spread out over the year but is highest in the summer, so ideally you would prefer to release water at low rate in the winter so that you have enough to meet summer demands without dipping below your power pool.
+
+Finally, you have to think about flood control. If you let the reservoir get too high in the winter and spring, there won't be enough room for runoff from storms and snowmelt, so FERC regulations dictate that you keep the reservoir at a lower level throught the winter, which calls for a high outflow.
+
+If precipitation is nicely spaced out throughtout the winter and melting happens gradually over the spring and summer, your life is easy. You can set your outflow at a moderate and steady rate during the winter, banking as much water as possible without having to spill too much or worry about flood risk.
+
+But now it's 2075 and the easy days are over. Winter storms dump all their water as rain, creating massive pulses of runoff that you have to spill as fast as possible to keep the reservoir within its flood control limits. Your finance manager wants you to keep levels high to generate as much power as possible. But keeping it high is playing with fire. Journalists are starting to call, worried that the next big storm could overtop the dam unless you spill faster. Farmers are angry that so much 'wasted' water is flowing out into the Pacific instead of being stored. The fish people, at least, are happy that you're sending water downstream to create salmonid habitat.
+
+Then comes the spring and summer. What little snowpack there is has already melted, so there's no inflow to sustain the high outflows, and the reservoir drops rapidly. By fall, it has dipped below the power pool and you're no longer making money.
+
+It's not easy running a reservoir.
+
+It's interesting to think about this in the future, but if there is a relationship between temperature and the timing of runoff, we should see it in historical data too. So: do higher temperatures during the winter and springs actually result in earlier runoff?
+
+### Method
+Lake Oroville seems like a good reservoir to start with. I began by downloading reservoir inflow data from <a href="http://cdec.water.ca.gov/cgi-progs/staSearch">DWR</a> and importing it into R for analysis. The data go back as far as 1995, giving us about 20 years of flows to work with. Plotting the time series and zooming in on any particular year, we can see the general pattern of inflow: winter storms bring sharp spikes of runoff from December to April, then melting snowpack produces a broad pulse of flow that sustains the reservoir until mid-summer (click and drag horizontally to zoom in on a year):
+
+.
+```{r flow time series}
+l <- plot_ly(oro, x=~date, y=~inflow, type="scatter", mode="lines", fill="tozeroy", line = list(width=1)) %>%
+  layout(title="Lake Oroville inflows, 1995-2016",
+         xaxis = list(title = 'Water year'),
+         yaxis = list(title = 'Reservoir inflow (AF)'))
+l
+```
+.
+
+That huge peak is from the 1997-98 El Nino, one of the most powerful in recorded history.
+
+### Finding the peak inflow
+How should we determine the 'peak' of reservoir inflow? For reservoirs that dam rivers, we can imagine the inflow curve for each water year as a skewed bell curve representing the river's base flow, onto which is superimposed transient peaks from the winter storms. At first thought we could just find the day with the maximum flow for each water year, but that would give the date of the largest storm rather than the true midpoint of the curve. A better approach is to find the date at which 50% of the inflow for that year has occured. One way to do this is to turn the inflow curves into *cumulative* inflow curves, rescale them all to 0--1, and then find the date that corresponds to 0.5, the midpoint of the curve.
+
+In the charts that follow, I used the water year, which starts on October 1, rather than calendar year. Precipitation in California is highly seasonal, with most precip falling between November and April. It makes sense to start counting inflows at the beginning of the wet season rather than in the middle.
+
+.
+```{r cumflow plot}
+l <- plot_ly(oro, x=~date, y=~cumflow, type="scatter", mode="lines", fill="tozeroy") %>%
+  layout(title = "Cumulative Lake Oroville inflow",
+         xaxis = list(title = 'Water year'),
+         yaxis = list(title = 'Cumulative reservoir inflow (AF)'))
+l
+```
+.
+
+There's quite a lot of variability in the total inflow from year to year. Lake Oroville has a capacity of 3.5 MAF, but during the stormy winter months DWR limits it to 2.8 MAF to allow space for flood control. That restriction is loosened after April 1, allowing snowmelt to top off the reservoir. In wet years, Oroville receives much more inflow than its 3.5 MAF capacity and has to spill into the Feather River. In dry years such as the 2011-16 drought, it receives much less.
+
+Normalizing the curves to [0-1] gives:
+
+```{r scaled cumflow plot}
+l <- plot_ly(oro, x=~date, y=~cumdist, type="scatter", mode="lines", fill="tozeroy") %>%
+  layout(xaxis = list(title = 'Water year'),
+         yaxis = list(title = 'Cumulative reservoir inflow (AF)'))
+l
+```
+.
+
+Now it's fairly simple to find the date where the cumulative flow reaches 0.5 for each water year. Since we're interested in the effect of temperature on this date, I downloaded some CIMIS data from the Buntingville station, which is not all that close to Oroville but is at least one of the few stations deep in the Sierra where the snow lives. Ideally we'd want to find some better data to get an average from different points around the Oroville watershed.
+
+With the Buntingville average daily air temperature data I computed the mean temperature for each water year. To zero in on the effect of temperature on precip mode and snowpack melting, I calculated the mean temp for the water year using just the eight months of November through June, when most precip and melting is occuring. For lack of a better term, I'll call this the "runoff generating period of the water year".
+
+.
+```{r temp plot, fig.height=4}
+
+p <- plot_ly(tdata, x=~wateryear, y=~avgtemp, color="darkred", type="box") %>%
+  layout(title = "Average daily temperature, CIMIS Buntingville station, WY1994 - WY2015",
+         xaxis = list(title = "Water year, Nov - Jun only"),
+         yaxis = list(title = "Average daily temperature (deg F)"))
+p
+```
+.
+
+Mean annual temperatures varied from 38 to 50 ^o^F.
+
+### Results
+
+Finally, we're ready to plot the date of peak reservoir inflow against the mean temperature for the water year. The prediction is that warmer temperatures will, ceti paribus, lead to earlier peak inflows. Here's the scatter plot (ignore the 2017 in the y-axis label):
+
+.
+```{r scatter, fig.height=4}
+m <- lm(data = fif, julian ~ wy_avgtemp)
+
+a <- as.numeric(as.Date("2017-01-01")) * 24 * 60 * 60 * 1000
+b <- as.numeric(as.Date("2017-04-30")) * 24 * 60 * 60 * 1000
+l <- plot_ly(fif, x=~wy_avgtemp, y=~doy, text=~year, type="scatter", name="Peak Flow") %>%
+     add_trace(fif, x = ~wy_avgtemp, y = as.Date(fitted(m), origin = "2017-01-01"), type = "scatter", mode = "lines",
+               line = list(width = 2), dash="dash") %>%
+     layout(title = "Oroville, date of peak reservoir inflow vs mean water year temperature",
+            xaxis = list(title = 'Mean water year temperature, Nov - June (deg F)'),
+            yaxis = list(title = "", range = c(a, b), tick0 = as.numeric(as.Date("2017-01-02"))*24*60*60*1000,
+            dtick = 31*24*60*60*1000),
+            showlegend = F)
+l
+```
+.
+
+The date of peak inflow for Oroville has varied from Jan 8 to April 28, but most years it occurs sometime in March. In the northern Sierra, peak snowpack occurs in late March on average, and DWR considers April 1 to be the end of major precipitation and the beginning of snowpack melting. A couple years, 1997 and 2013, are outliers. It seems one or two very large storms can have a large effect on the peak timing. Same data with a linear model fit:
+
+.
+```{r scatter with trend, fig.height=4}
+m <- lm(data = fif, julian ~ wy_avgtemp)
+nd <- data.frame(wy_avgtemp = fif$wy_avgtemp)
+n <- predict(m, newdata=nd, interval="confidence")
+fif$lm <- as.Date(n, origin = "2017-01-01")
+
+a <- as.numeric(as.Date("2017-01-01")) * 24 * 60 * 60 * 1000
+b <- as.numeric(as.Date("2017-04-30")) * 24 * 60 * 60 * 1000
+l <- plot_ly(fif, x=~wy_avgtemp, y=~doy, text=~year, type="scatter") %>%
+     add_trace(fif, x = ~wy_avgtemp, y = ~lm, type = "scatter", mode = "line",
+               line = list(width = 1), dash="dash") %>%
+     layout(title = "Oroville, date of peak reservoir inflow vs mean water year temperature",
+            xaxis = list(title = 'Mean water year temperature, Nov - June (deg F)'),
+            yaxis = list(title = "", range = c(a, b), tick0 = as.numeric(as.Date("2017-01-02"))*24*60*60*1000,
+            dtick = 31*24*60*60*1000),
+            showlegend = F)
+l
+```
+.
+
+**The model reports that for every 1 degree F increase in mean temperature during the runoff generating part of the water year (Nov--June), the date of peak inflow is 5--11 days earlier (*p = 0.016, R^2^ = 0.22*):**
+
+```{r coefficient table, results=T}
+summary(m)
+```
+
+The effect size is pretty large but it's only marginally significant, so let's look at another reservoir farther south:
+
+.
+```{r Analyze Folsom, fig.height=4}
+tempdata <- read_csv("cimis camino.csv", col_types = cols(`CIMIS Region` = col_skip(),
+  Date = col_date(format = "%m/%d/%Y")))
+colnames(tempdata) <- c("id", "name", "date", "julian", "maxtemp", "qc1", "avgtemp", "qc2")
+tempdata %<>% select(date, avgtemp) %>% filter(!(month(date) %in% c(7, 8, 9, 10))) %>%
+  mutate(avgtemp = ifelse(is.na(avgtemp), 50, avgtemp), wateryear = water_year(date))
+tdata <- tempdata
+tempdata %<>%group_by(wateryear) %>%
+  summarize(wy_avgtemp = mean(avgtemp))
+
+fol <- read_csv("Folsom inflow.csv")
+fol %<>% transmute(date = mdy(Date), inflow = as.numeric(Inflow) * 60 *60 * 24 * 7.48 / 325851,
+                   year = year(date), julian = yday(date), wateryear = water_year(date)) %>%
+  filter(!is.na(inflow), inflow >= 0, wateryear != 1993, wateryear != 2016) %>%
+  group_by(wateryear) %>%
+  mutate(cumflow = cumsum(inflow), cumdist = cumflow/max(cumflow), cumdiff = abs(cumdist - 0.5)) %>%
+  left_join(tempdata, by="wateryear")
+fif <- fol %>% filter(cumdiff == min(cumdiff)) %>% mutate(doy = as.Date(julian, origin = "2017-01-01"))
+
+m <- lm(data = fif, julian ~ wy_avgtemp)
+nd <- data.frame(wy_avgtemp = fif$wy_avgtemp)
+n <- predict(m, newdata=nd, interval="confidence")
+fif$lm <- as.Date(n, origin = "2017-01-01")
+
+a <- as.numeric(as.Date("2017-01-01")) * 24 * 60 * 60 * 1000
+b <- as.numeric(as.Date("2017-04-30")) * 24 * 60 * 60 * 1000
+l <- plot_ly(fif, x=~wy_avgtemp, y=~doy, text=~year, type="scatter") %>%
+     layout(title = "Folsom, date of peak reservoir inflow vs mean water year temperature",
+            xaxis = list(title = 'Mean water year temperature, Nov - June (deg F)'),
+            yaxis = list(title = "", range = c(a, b), tick0 = as.numeric(as.Date("2017-01-02"))*24*60*60*1000,
+            dtick = 31*24*60*60*1000),
+            showlegend = F)
+l
+```
+.
+
+Folsom is about the same: 1 ^o^F = 4--10 days earlier (*p = 0.017*); temperature data from Camino CIMIS station.
+
+### Discussion
+The snowpack serves as an <a href="https://pubs.usgs.gov/fs/2016/3062/fs20163062.pdf">enormous 'free' reservoir</a> for California, storing nearly as much water (5-20 MAF) as all our artificial reservoirs combined and releasing it steadily throughout the spring and summer months when demand is highest. This graph shows how the Northern Sierra snowpack builds throughout the winter, reaching a peak in late March:
+<img src="https://andrewskurka.korndev-cdn.com/wp-content/uploads/snowpack-biggest-winters.jpg" height=3> On April 1, DWR measures the depth of the snowpack and estimates how much water will be available through the State Water Project for that year. If the snowpack peaks earlier due to less snow and faster melting, there may be less water available later in the summer when demand is highest. In this analysis, we did not consider other factors that may increase the rate of snowmelt, such as dust settling out of the atmosphere onto the snow surface, where it reduces albedo and heats the snow (more of a problem in the Rockies than the Sierra).
+
+### Further analysis
+This whole exercize suggests a deeper question that I hadn't thought to ask before: **Are some reservoirs more temperature-sensitive than others?** We could imagine that reservoirs that are situated closer to their source waters would show a stronger temperature dependence than lower-elevation reservoirs, or that reservoirs fed by more snowpack vs rain would also be more sensitive. This sort of reminds me of the work that Naomi Tague and some of my Bren classmates were doing on snow- vs rain- dominated watersheds. I have never heard anyone talk about reservoirs as having a temperature sensitivity but this could have some interesting policy implications -- e.g. which reservoirs do we prioritize for infrastructure improvements or re-operation?
+
+It would be awfully nice if we had a longer historical record to analyze. DWR may have old reservoir data sitting around in some form, and some enterprising analyst could probably file a public records request and get it, but DWR probably has more important matters to attend to at the moment. More importantly, the data that *is* online is difficult to access and time consuming to process. There's no way to just download a raw csv file, so instead you must scrape the web page, either by hand or using a tool like `rvest`. The CIMIS weather data, by contrast, is easy to access through their <a href="http://et.water.ca.gov/">API</a>; I even wrote <a href="https://github.com/codeswitching/rcimis" target="_blank">an R tool</a> to do it in a single line of code.
+
+**With all the discussion recently about the need for better water data, one concrete thing agencies like DWR could do is to develop APIs for all of their public-facing databases.** That would allow civic-minded developers, scientists, and open data evangelists to develop tools and better front-ends for that data. Transit is a good example of this. By urging cities to standardize their public transit information and expose it through an API, Google was able to provide a much smoother user experience through Google Maps than what the cities had been providing.
+
+In terms of the science, there are other response variables we could analyze. Instead of reservoir inflows, we could look at Sierra streamflows or snowpack SWE (snow water equivalent). But reservoirs are nice because they aggregate multiple effects (rain vs snow dominance, timing of snowmelt) and drain large areas of alpine watershed. We could also look at other predictors such as solar radiation, or at least refine our temperature data to get a more respresentative estimate of temperature than the crude annual mean used here. There may also be a nonlinear response between temperature and runoff that this model doesn't consider. If you have ideas for how to improve this analysis, please let me know.
+
+----
+
+Made with love using R, RStudio, RMarkdown, the tidyverse, plot.ly, and RPubs.
+R code for this analysis can be found on Github <a href="https://github.com/codeswitching/Reservoir-inflow-analysis/tree/master", target="_blank">here</a>.
