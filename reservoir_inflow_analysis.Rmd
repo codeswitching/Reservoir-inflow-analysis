@@ -10,8 +10,10 @@ output:
 **Lauren Steely, @MadreDeZanjas**
 
 **March 2017 (updated August 2017)**
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+# git config http.sslVerify false
 
 library(tidyverse)
 library(lubridate) # makes working with dates easier
@@ -205,7 +207,7 @@ ggsave(q, file="inflow joyplot arr by temp.png", device="png", width=7, height=4
 
 ### Discussion
 The snowpack serves as an <a href="https://pubs.usgs.gov/fs/2016/3062/fs20163062.pdf">enormous 'free' reservoir</a> for California, storing nearly as much water (5-20 MAF) as all our artificial reservoirs combined and releasing it steadily throughout the spring and summer months when demand is highest. The Northern Sierra snowpack builds throughout the winter, reaching a peak in late March:
-<img src="https://andrewskurka.korndev-cdn.com/wp-content/uploads/snowpack-biggest-winters.jpg" height=3> On April 1, DWR measures the depth of the snowpack and estimates how much water will be available through the State Water Project for that year. If the snowpack peaks earlier due to less snow and faster melting, there may be less water available later in the summer when demand is highest. In this analysis, I did not consider other factors that may increase the rate of snowmelt, such as dust settling out of the atmosphere onto the snow surface, where it reduces albedo and heats the snow (more of a problem in the Rockies than the Sierra).
+<img src="https://andrewskurka.korndev-cdn.com/wp-content/uploads/snowpack-biggest-winters.jpg" height=3> On April 1, DWR measures the depth of the snowpack and estimates how much water will be available through the State Water Project for that year. If the snowpack peaks earlier due to less snow and faster melting, there may be less water available later in the summer when demand is highest. In this analysis, I did not consider other factors that may affect the rate of snowmelt, such as forest thinning due to wildfire or dust settling out of the atmosphere onto the snow surface, where it reduces albedo and heats the snow..
 
 ### Further analysis
 This exercise suggests a deeper question that I hadn't thought to ask before: **Are some reservoirs more temperature-sensitive than others?** We could imagine that reservoirs that are situated closer to their source waters would show a stronger temperature dependence than lower-elevation reservoirs, or that reservoirs fed by more snowpack vs rain would also be more sensitive. This reminds me of the work that Dr. Naomi Tague and some of my former Bren colleagues are doing on snow- vs rain- dominated watersheds. Temperature sensitivity of reservoirs could have some interesting policy implications -- e.g. which reservoirs do we prioritize for infrastructure improvements or re-operation?
@@ -218,5 +220,5 @@ In terms of the science, there are other response variables we could analyze. In
 
 -----
 
-Made with love using R, RStudio, RMarkdown, the tidyverse, plot.ly, ggjoy, and RPubs.
+Made with love using R, RStudio, RMarkdown, the tidyverse, plot.ly, and ggjoy..
 R code for this analysis can be found on Github <a href="https://github.com/codeswitching/Reservoir-inflow-analysis/tree/master", target="_blank">here</a>.
