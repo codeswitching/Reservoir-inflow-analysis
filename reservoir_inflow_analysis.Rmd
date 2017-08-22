@@ -99,6 +99,7 @@ l
 
 The huge peak is from the 1997 El Nino, one of the most powerful in recorded history. Stacking the time series, the variations in timing become evident. Large storms occur sporadically before April 1 (dashed red line), after which a broad pulse of meltwater fills the reservoir throughout the spring and summer.
 
+.
 ```{r ggplot, fig.height=5}
 p <- ggplot(oro, aes(dowy, as.factor(-wateryear), height = inflow, group=as.factor(wateryear), fill=as.factor(wateryear))) +
   geom_joy(stat="identity", scale=19, size=0.3) + 
